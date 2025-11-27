@@ -1,0 +1,7 @@
+{
+  "name": "Gestão de Vendas",
+  "description": "Aplicativo de gestão de vendas Ornare Semijoias e Prata.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
