@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from '../types';
-import { getUsers, deleteUser, exportData, importData } from '../services/storageService';
-import { Trash2, Shield, User as UserIcon, Download, Upload, Database, Loader2 } from 'lucide-react';
+import { getUsers, deleteUser, exportData, importData, approveUser } from '../services/storageService';
+import { Trash2, Shield, User as UserIcon, Download, Upload, Database, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 interface AdminPanelProps {
   currentUser: User;
@@ -37,6 +37,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
         await loadUsers();
       } else {
         alert("Erro ao excluir usuário.");
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleApproveUser = async (id: string, name: string) => {
+    if (window.confirm(`Deseja aprovar o acesso para "${name}"?`)) {
+      setLoading(true);
+      const success = await approveUser(id);
+      if (success) {
+        alert("Usuário aprovado com sucesso!");
+        await loadUsers();
+      } else {
+        alert("Erro ao aprovar usuário.");
         setLoading(false);
       }
     }
@@ -83,19 +97,80 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const pendingUsers = users.filter(u => !u.approved);
+  const activeUsers = users.filter(u => u.approved);
+
   return (
     <div className="space-y-8 relative">
        {loading && <div className="absolute inset-0 bg-gray-950/50 flex items-center justify-center z-50"><Loader2 className="animate-spin text-primary" size={32} /></div>}
 
-      {/* User Management Section */}
+      {/* Pending Users Section */}
+      {pendingUsers.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-600 p-2 rounded-lg text-white">
+              <CheckCircle size={24} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Solicitações Pendentes</h1>
+              <p className="text-gray-400 text-sm">Usuários aguardando aprovação</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-900 rounded-xl shadow-sm border border-yellow-800/50 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-950">
+                  <tr>
+                    <th className="px-6 py-4 font-medium text-gray-400">Nome</th>
+                    <th className="px-6 py-4 font-medium text-gray-400">Usuário</th>
+                    <th className="px-6 py-4 font-medium text-gray-400">Contato</th>
+                    <th className="px-6 py-4 font-medium text-gray-400 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {pendingUsers.map(user => (
+                    <tr key={user.id} className="hover:bg-gray-800 transition-colors">
+                      <td className="px-6 py-4 text-white font-medium">{user.name}</td>
+                      <td className="px-6 py-4 text-gray-300">{user.username}</td>
+                      <td className="px-6 py-4 text-gray-400">
+                        <div className="flex flex-col text-xs gap-1">
+                          <span>{user.email || '-'}</span>
+                          <span>{user.whatsapp || '-'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right flex justify-end gap-2">
+                         <button
+                          onClick={() => handleApproveUser(user.id, user.name)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                        >
+                          Aprovar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          className="bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          Rejeitar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active User Management Section */}
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="bg-primary p-2 rounded-lg text-black">
             <Shield size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Gestão de Usuários</h1>
-            <p className="text-gray-400 text-sm">Painel Administrativo</p>
+            <h1 className="text-2xl font-bold text-white">Usuários Ativos</h1>
+            <p className="text-gray-400 text-sm">Gerencie o acesso ao sistema</p>
           </div>
         </div>
 
@@ -105,21 +180,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
               <thead className="bg-gray-950">
                 <tr>
                   <th className="px-6 py-4 font-medium text-gray-400">Nome</th>
-                  <th className="px-6 py-4 font-medium text-gray-400">Usuário (Login)</th>
+                  <th className="px-6 py-4 font-medium text-gray-400">Usuário</th>
+                  <th className="px-6 py-4 font-medium text-gray-400">Contato</th>
                   <th className="px-6 py-4 font-medium text-gray-400">Permissão</th>
                   <th className="px-6 py-4 font-medium text-gray-400 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {users.map(user => (
+                {activeUsers.map(user => (
                   <tr key={user.id} className="hover:bg-gray-800 transition-colors">
                     <td className="px-6 py-4 text-white font-medium flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400">
+                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
                         <UserIcon size={16} />
                       </div>
                       {user.name}
                     </td>
                     <td className="px-6 py-4 text-gray-300">{user.username}</td>
+                    <td className="px-6 py-4 text-gray-400">
+                      <div className="flex flex-col text-xs gap-1">
+                        <span>{user.email || '-'}</span>
+                        <span>{user.whatsapp || '-'}</span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         user.role === 'admin' 

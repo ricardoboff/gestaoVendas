@@ -29,7 +29,10 @@ export const initializeStorage = async () => {
     name: 'Ricardo Boff',
     username: 'admin',
     password: 'Jul1@1008',
-    role: 'admin' as const
+    role: 'admin' as const,
+    email: 'ricardoboff@gmail.com',
+    whatsapp: '6984030262',
+    approved: true
   };
 
   if (querySnapshot.empty) {
@@ -37,7 +40,7 @@ export const initializeStorage = async () => {
     await addDoc(collection(db, USERS_COLLECTION), adminData);
     console.log("Admin criado no Firebase");
   } else {
-    // Atualiza admin se já existir (garante senha/role corretos)
+    // Atualiza admin se já existir (garante senha/role/contatos corretos)
     const docId = querySnapshot.docs[0].id;
     await updateDoc(doc(db, USERS_COLLECTION, docId), adminData);
   }
@@ -63,7 +66,13 @@ const calculateBalance = (transactions: Transaction[]): number => {
 
 // --- Usuários ---
 
-export const registerUser = async (name: string, username: string, password: string): Promise<boolean> => {
+export const registerUser = async (
+  name: string, 
+  username: string, 
+  password: string, 
+  email: string, 
+  whatsapp: string
+): Promise<boolean> => {
   try {
     const q = query(collection(db, USERS_COLLECTION), where("username", "==", username));
     const snapshot = await getDocs(q);
@@ -74,7 +83,10 @@ export const registerUser = async (name: string, username: string, password: str
       name,
       username,
       password, // Nota: Em produção real, senhas devem ser hash
-      role: 'user'
+      email,
+      whatsapp,
+      role: 'user',
+      approved: false // Por padrão, precisa de aprovação
     });
     return true;
   } catch (e) {
@@ -83,27 +95,46 @@ export const registerUser = async (name: string, username: string, password: str
   }
 };
 
-export const loginUser = async (username: string, password: string): Promise<User | null> => {
+export const loginUser = async (username: string, password: string): Promise<{user: User | null, error?: string}> => {
   try {
     const q = query(collection(db, USERS_COLLECTION), where("username", "==", username), where("password", "==", password));
     const snapshot = await getDocs(q);
 
     if (!snapshot.empty) {
       const docData = snapshot.docs[0].data();
+      
+      // Verifica aprovação
+      if (docData.approved === false) {
+        return { user: null, error: 'PENDING_APPROVAL' };
+      }
+
       const user: User = {
         id: snapshot.docs[0].id,
         name: docData.name,
         username: docData.username,
-        role: docData.role || (docData.username === 'admin' ? 'admin' : 'user')
+        role: docData.role || (docData.username === 'admin' ? 'admin' : 'user'),
+        email: docData.email,
+        whatsapp: docData.whatsapp,
+        approved: docData.approved
       };
       
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-      return user;
+      return { user };
     }
-    return null;
+    return { user: null, error: 'INVALID_CREDENTIALS' };
   } catch (e) {
     console.error("Erro no login", e);
-    return null;
+    return { user: null, error: 'ERROR' };
+  }
+};
+
+export const approveUser = async (userId: string): Promise<boolean> => {
+  try {
+    await updateDoc(doc(db, USERS_COLLECTION, userId), { approved: true });
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
   }
 };
 
@@ -124,7 +155,10 @@ export const getUsers = async (): Promise<User[]> => {
       id: doc.id,
       name: data.name,
       username: data.username,
-      role: data.role || 'user'
+      role: data.role || 'user',
+      email: data.email,
+      whatsapp: data.whatsapp,
+      approved: data.approved
     } as User;
   });
 };
@@ -267,7 +301,6 @@ export const deleteTransaction = async (
 };
 
 // --- Backup ---
-// Nota: O backup agora puxa do Firestore
 
 export const exportData = async (): Promise<string> => {
   const users = await getUsers();
@@ -288,11 +321,9 @@ export const importData = async (jsonString: string): Promise<boolean> => {
     
     if (data.customers && Array.isArray(data.customers)) {
       for (const c of data.customers) {
-        // Salva cada cliente individualmente no Firestore
         await saveCustomer(c);
       }
     }
-    // Não importamos usuários por segurança de senha/hash
     return true;
   } catch (e) {
     console.error("Erro ao importar", e);

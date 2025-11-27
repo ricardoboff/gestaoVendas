@@ -28,7 +28,10 @@ export interface User {
   id: string;
   name: string;
   username: string;
-  role: 'admin' | 'user'; // Adicionado para controle de acesso
+  role: 'admin' | 'user';
+  email?: string;      // Novo
+  whatsapp?: string;   // Novo
+  approved: boolean;   // Novo: true = acesso liberado, false = pendente
 }
 
 export interface AuthState {
