@@ -7,7 +7,7 @@ import CustomerList from './components/CustomerList';
 import CustomerDetail from './components/CustomerDetail';
 import AdminPanel from './components/AdminPanel';
 import UserProfile from './components/UserProfile';
-import { LayoutDashboard, Users, LogOut, Menu, X, Diamond, Shield, Loader2, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Menu, X, Diamond, Shield, Loader2, Settings, Download } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -29,6 +30,12 @@ const App: React.FC = () => {
       setIsLoading(false);
     };
     init();
+
+    // Listen for PWA install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
   }, []);
 
   const refreshData = async () => {
@@ -70,6 +77,15 @@ const App: React.FC = () => {
     setSelectedCustomer(customer);
     setCurrentView('detail');
     setMobileMenuOpen(false);
+  };
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
   };
 
   if (!user) {
@@ -150,6 +166,16 @@ const App: React.FC = () => {
               <Settings size={20} />
               Meu Perfil
             </button>
+
+            {deferredPrompt && (
+              <button
+                onClick={handleInstallClick}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors bg-primary text-black font-bold mt-4 animate-pulse"
+              >
+                <Download size={20} />
+                Instalar App
+              </button>
+            )}
           </div>
 
           <div className="mt-auto pt-6 border-t border-gray-800">

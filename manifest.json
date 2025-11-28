@@ -1,0 +1,23 @@
+{
+  "name": "Gestor Ornare Semijoias",
+  "short_name": "Ornare",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "description": "Gestão de vendas e clientes Ornare",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNmTIuNyAxMC4zYTIgMiAwIDAgMSAyLjE5OS0xLjAyMWw5LjgyNiAyLjE4M2EyIDIgMCAwIDEgMS4zOTUgMS4zOTVsMi4xODMgOS44MjZhMiAyIDAgMCAxLTEuMDIxIDIuMTk5bC04LjY3IDMuNDY4YTIgMiAwIDAgMS0xLjQ4NiAwbC04LjY3LTMuNDY4YTIgMiAwIDAgMS0xLjAyMS0yLjE5OWwyLjE4My05LjgyNnoiLz48cGF0aCBkPSJtMiA5IDEwIDEwIi8+PHBhdGggZD0ibTEyIDIxIDEwLTEwIi8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNmTIuNyAxMC4zYTIgMiAwIDAgMSAyLjE5OS0xLjAyMWw5LjgyNiAyLjE4M2EyIDIgMCAwIDEgMS4zOTUgMS4zOTVsMi4xODMgOS44MjZhMiAyIDAgMCAxLTEuMDIxIDIuMTk5bC04LjY3IDMuNDY4YTIgMiAwIDAgMS0xLjQ4NiAwbC04LjY3LTMuNDY4YTIgMiAwIDAgMS0xLjAyMS0yLjE5OWwyLjE4My05LjgyNnoiLz48cGF0aCBkPSJtMiA5IDEwIDEwIi8+PHBhdGggZD0ibTEyIDIxIDEwLTEwIi8+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
