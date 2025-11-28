@@ -15,6 +15,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  // --- Máscaras ---
+  const maskPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '') // Remove tudo o que não é dígito
+      .replace(/^(\d{2})(\d)/g, '($1) $2') // Coloca parênteses em volta dos dois primeiros dígitos
+      .replace(/(\d)(\d{4})$/, '$1-$2') // Coloca hífen entre o quarto e o quinto dígitos
+      .substring(0, 15); // Limita tamanho
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWhatsapp(maskPhone(e.target.value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -94,7 +107,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ user }) => {
                   type="tel"
                   required
                   value={whatsapp}
-                  onChange={e => setWhatsapp(e.target.value)}
+                  onChange={handlePhoneChange}
+                  maxLength={15}
                   className="w-full bg-gray-950 border border-gray-700 text-white rounded-lg p-3 focus:ring-primary focus:border-primary outline-none"
                 />
               </div>

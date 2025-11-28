@@ -14,6 +14,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
   const [showScanner, setShowScanner] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cpfError, setCpfError] = useState('');
   
   // State for editing customer details
   const [editForm, setEditForm] = useState<Partial<Customer>>({
@@ -40,6 +41,59 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
     date: getLocalDateString(),
     type: TransactionType.SALE
   });
+
+  // --- Máscaras e Validação ---
+  const maskPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/^(\d{2})(\d)/g, '($1) $2')
+      .replace(/(\d)(\d{4})$/, '$1-$2')
+      .substring(0, 15);
+  };
+
+  const maskCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const validateCPF = (cpf: string) => {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf === '') return true;
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    
+    let sum = 0;
+    let remainder;
+    
+    for (let i = 1; i <= 9; i++) 
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    remainder = (sum * 10) % 11;
+    
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cpf.substring(9, 10))) return false;
+    
+    sum = 0;
+    for (let i = 1; i <= 10; i++) 
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    remainder = (sum * 10) % 11;
+    
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
+    
+    return true;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm({ ...editForm, phonePrimary: maskPhone(e.target.value) });
+  };
+
+  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm({ ...editForm, cpf: maskCPF(e.target.value) });
+    setCpfError('');
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -84,6 +138,12 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
 
   const handleUpdateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (editForm.cpf && !validateCPF(editForm.cpf)) {
+      setCpfError('CPF Inválido');
+      return;
+    }
+
     if (!editForm.name || !editForm.phonePrimary) return;
     setLoading(true);
 
@@ -260,7 +320,6 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
             </button>
           </div>
           <form onSubmit={handleUpdateCustomer} className="space-y-4">
-            {/* Same form as before */}
              <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Nome Completo *</label>
               <input
@@ -277,19 +336,24 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
                 <input
                   type="tel"
                   required
+                  placeholder="(00) 00000-0000"
                   className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
                   value={editForm.phonePrimary}
-                  onChange={e => setEditForm({...editForm, phonePrimary: e.target.value})}
+                  onChange={handlePhoneChange}
+                  maxLength={15}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">CPF</label>
                 <input
                   type="text"
-                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
+                  placeholder="000.000.000-00"
+                  className={`w-full bg-gray-800 border text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 ${cpfError ? 'border-red-500' : 'border-gray-700'}`}
                   value={editForm.cpf}
-                  onChange={e => setEditForm({...editForm, cpf: e.target.value})}
+                  onChange={handleCPFChange}
+                  maxLength={14}
                 />
+                {cpfError && <p className="text-red-500 text-xs mt-1">{cpfError}</p>}
               </div>
             </div>
             <div>

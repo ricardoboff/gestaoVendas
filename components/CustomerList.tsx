@@ -13,6 +13,8 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cpfError, setCpfError] = useState('');
+  
   const [newCustomer, setNewCustomer] = useState<Partial<Customer>>({
     name: '', phonePrimary: '', cpf: '', address: '', notes: ''
   });
@@ -23,8 +25,68 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
     c.phonePrimary.includes(searchTerm)
   );
 
+  // --- Máscaras e Validação ---
+
+  const maskPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/^(\d{2})(\d)/g, '($1) $2')
+      .replace(/(\d)(\d{4})$/, '$1-$2')
+      .substring(0, 15);
+  };
+
+  const maskCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '') // substitui qualquer caracter que nao seja numero por nada
+      .replace(/(\d{3})(\d)/, '$1.$2') // captura 2 grupos de numero o primeiro de 3 e o segundo de 1, apos capturar o primeiro grupo ele adiciona um ponto antes do segundo grupo de numero
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1'); // captura 2 numeros seguidos de um traço e não deixa ser digitado mais nada
+  };
+
+  const validateCPF = (cpf: string) => {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf === '') return true; // Aceita vazio pois pode ser opcional
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    
+    let sum = 0;
+    let remainder;
+    
+    for (let i = 1; i <= 9; i++) 
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    remainder = (sum * 10) % 11;
+    
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cpf.substring(9, 10))) return false;
+    
+    sum = 0;
+    for (let i = 1; i <= 10; i++) 
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    remainder = (sum * 10) % 11;
+    
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
+    
+    return true;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewCustomer({ ...newCustomer, phonePrimary: maskPhone(e.target.value) });
+  };
+
+  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewCustomer({ ...newCustomer, cpf: maskCPF(e.target.value) });
+    setCpfError(''); // Limpa erro ao digitar
+  };
+
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (newCustomer.cpf && !validateCPF(newCustomer.cpf)) {
+      setCpfError('CPF Inválido');
+      return;
+    }
+
     if (!newCustomer.name || !newCustomer.phonePrimary) return;
     
     setLoading(true);
@@ -45,6 +107,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
     setLoading(false);
     setShowAddForm(false);
     setNewCustomer({ name: '', phonePrimary: '', cpf: '', address: '', notes: '' });
+    setCpfError('');
     onUpdate();
   };
 
@@ -118,17 +181,21 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
                   placeholder="(00) 00000-0000"
                   className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
                   value={newCustomer.phonePrimary}
-                  onChange={e => setNewCustomer({...newCustomer, phonePrimary: e.target.value})}
+                  onChange={handlePhoneChange}
+                  maxLength={15}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">CPF</label>
                 <input
                   type="text"
-                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
+                  placeholder="000.000.000-00"
+                  className={`w-full bg-gray-800 border text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 ${cpfError ? 'border-red-500' : 'border-gray-700'}`}
                   value={newCustomer.cpf}
-                  onChange={e => setNewCustomer({...newCustomer, cpf: e.target.value})}
+                  onChange={handleCPFChange}
+                  maxLength={14}
                 />
+                {cpfError && <p className="text-red-500 text-xs mt-1">{cpfError}</p>}
               </div>
             </div>
             <div>

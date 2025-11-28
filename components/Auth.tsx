@@ -26,6 +26,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const ADMIN_WHATSAPP = '556984030262';
   const ADMIN_EMAIL = 'ricardoboff@gmail.com';
 
+  // --- Máscaras ---
+  const maskPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '') // Remove tudo o que não é dígito
+      .replace(/^(\d{2})(\d)/g, '($1) $2') // Coloca parênteses em volta dos dois primeiros dígitos
+      .replace(/(\d)(\d{4})$/, '$1-$2') // Coloca hífen entre o quarto e o quinto dígitos
+      .substring(0, 15); // Limita tamanho
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWhatsapp(maskPhone(e.target.value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -155,8 +168,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   type="tel"
                   className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-3 border placeholder-gray-500"
                   value={whatsapp}
-                  onChange={e => setWhatsapp(e.target.value)}
-                  placeholder="DDD + Número"
+                  onChange={handlePhoneChange}
+                  placeholder="(00) 00000-0000"
+                  maxLength={15}
                 />
               </div>
             </>
