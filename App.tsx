@@ -7,11 +7,11 @@ import CustomerList from './components/CustomerList';
 import CustomerDetail from './components/CustomerDetail';
 import AdminPanel from './components/AdminPanel';
 import UserProfile from './components/UserProfile';
-import { LayoutDashboard, Users, LogOut, Menu, X, Diamond, Shield, Loader2, Settings, Download } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Menu, X, Diamond, Shield, Loader2, Settings, Download, HelpCircle, Share, PlusSquare } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'customers' | 'detail' | 'admin' | 'profile'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'customers' | 'detail' | 'admin' | 'profile' | 'install-help'>('dashboard');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -35,6 +35,7 @@ const App: React.FC = () => {
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      console.log('PWA install prompt captured');
     });
   }, []);
 
@@ -80,13 +81,55 @@ const App: React.FC = () => {
   };
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      // Se não houver prompt automático, mostra a tela de ajuda
+      setCurrentView('install-help');
+      setMobileMenuOpen(false);
+      return;
+    }
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
     }
   };
+
+  const InstallHelp = () => (
+    <div className="max-w-md mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+        <Download size={24} /> Instalar Aplicativo
+      </h1>
+      
+      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <h2 className="text-lg font-bold text-white mb-4">iPhone (iOS)</h2>
+        <ol className="space-y-4 text-gray-300 list-decimal list-inside">
+          <li className="flex items-start gap-2">
+            <span className="mt-1">Toque no botão <strong>Compartilhar</strong></span>
+            <Share size={18} className="text-blue-400 mt-1" />
+            <span className="mt-1">na barra inferior do Safari.</span>
+          </li>
+          <li className="flex items-start gap-2">
+             <span className="mt-1">Role para baixo e selecione <strong>Adicionar à Tela de Início</strong></span>
+             <PlusSquare size={18} className="text-gray-400 mt-1" />
+          </li>
+          <li>Toque em <strong>Adicionar</strong> no canto superior direito.</li>
+        </ol>
+      </div>
+
+      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <h2 className="text-lg font-bold text-white mb-4">Android (Chrome)</h2>
+        <ol className="space-y-4 text-gray-300 list-decimal list-inside">
+          <li>Toque nos <strong>Três Pontinhos</strong> no canto superior direito do navegador.</li>
+          <li>Selecione <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.</li>
+          <li>Confirme clicando em <strong>Instalar</strong>.</li>
+        </ol>
+      </div>
+      
+      <div className="text-center text-sm text-gray-500 mt-4">
+         Após instalar, o app aparecerá junto com seus outros aplicativos.
+      </div>
+    </div>
+  );
 
   if (!user) {
     return <Auth onLogin={handleLogin} />;
@@ -167,15 +210,15 @@ const App: React.FC = () => {
               Meu Perfil
             </button>
 
-            {deferredPrompt && (
-              <button
-                onClick={handleInstallClick}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors bg-primary text-black font-bold mt-4 animate-pulse"
-              >
-                <Download size={20} />
-                Instalar App
-              </button>
-            )}
+            <button
+              onClick={handleInstallClick}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                 deferredPrompt ? 'bg-primary text-black font-bold animate-pulse' : 'text-gray-400 hover:bg-gray-800'
+              }`}
+            >
+              {deferredPrompt ? <Download size={20} /> : <HelpCircle size={20} />}
+              {deferredPrompt ? 'Instalar App' : 'Como Instalar'}
+            </button>
           </div>
 
           <div className="mt-auto pt-6 border-t border-gray-800">
@@ -243,6 +286,9 @@ const App: React.FC = () => {
           )}
           {currentView === 'profile' && (
              <UserProfile user={user} />
+          )}
+          {currentView === 'install-help' && (
+             <InstallHelp />
           )}
         </div>
       </main>
