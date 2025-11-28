@@ -412,6 +412,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
       <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 p-6">
         <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Adicionar Movimentação Manual</h3>
         <form onSubmit={handleManualAdd} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          
+          {/* Campo Data */}
           <div className="md:col-span-2">
             <label className="block text-xs font-medium text-gray-400 mb-1">Data</label>
             <input 
@@ -422,6 +424,31 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
               className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm p-2 border"
             />
           </div>
+
+          {/* Campo Tipo - Trocado de Lugar e com lógica automática */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-gray-400 mb-1">Tipo</label>
+            <select
+              value={newTrans.type}
+              onChange={e => {
+                const newType = e.target.value as TransactionType;
+                setNewTrans(prev => ({
+                  ...prev, 
+                  type: newType,
+                  // Se mudar para pagamento, preenche automaticamente. Se voltar para venda e estava escrito Pagamento, limpa.
+                  description: newType === TransactionType.PAYMENT 
+                    ? 'Pagamento' 
+                    : (prev.description === 'Pagamento' ? '' : prev.description)
+                }));
+              }}
+              className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm p-2 border"
+            >
+              <option value={TransactionType.SALE}>Venda (Débito)</option>
+              <option value={TransactionType.PAYMENT}>Pagamento (Crédito)</option>
+            </select>
+          </div>
+
+          {/* Campo Descrição - Trocado de lugar */}
           <div className="md:col-span-4">
             <label className="block text-xs font-medium text-gray-400 mb-1">Descrição</label>
             <input 
@@ -433,17 +460,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
               className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm p-2 border"
             />
           </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-400 mb-1">Tipo</label>
-            <select
-              value={newTrans.type}
-              onChange={e => setNewTrans({...newTrans, type: e.target.value as TransactionType})}
-              className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm p-2 border"
-            >
-              <option value={TransactionType.SALE}>Venda (Débito)</option>
-              <option value={TransactionType.PAYMENT}>Pagamento (Crédito)</option>
-            </select>
-          </div>
+          
+          {/* Campo Valor */}
           <div className="md:col-span-2">
             <label className="block text-xs font-medium text-gray-400 mb-1">Valor (R$)</label>
             <input 
@@ -456,6 +474,8 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
               className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm p-2 border"
             />
           </div>
+
+          {/* Botão Adicionar */}
           <div className="md:col-span-2">
             <button 
               type="submit"
