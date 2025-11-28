@@ -6,11 +6,12 @@ import Dashboard from './components/Dashboard';
 import CustomerList from './components/CustomerList';
 import CustomerDetail from './components/CustomerDetail';
 import AdminPanel from './components/AdminPanel';
-import { LayoutDashboard, Users, LogOut, Menu, X, Diamond, Shield, Loader2 } from 'lucide-react';
+import UserProfile from './components/UserProfile';
+import { LayoutDashboard, Users, LogOut, Menu, X, Diamond, Shield, Loader2, Settings } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'customers' | 'detail' | 'admin'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'customers' | 'detail' | 'admin' | 'profile'>('dashboard');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -44,6 +45,13 @@ const App: React.FC = () => {
         setCurrentView('customers');
       }
     }
+    
+    // Refresh user data if profile updated
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+       setUser(currentUser);
+    }
+
     setIsLoading(false);
   };
 
@@ -132,6 +140,16 @@ const App: React.FC = () => {
                 Usuários
               </button>
             )}
+
+            <button
+              onClick={() => { setCurrentView('profile'); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                currentView === 'profile' ? 'bg-gray-800 text-white font-medium border border-gray-700' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`}
+            >
+              <Settings size={20} />
+              Meu Perfil
+            </button>
           </div>
 
           <div className="mt-auto pt-6 border-t border-gray-800">
@@ -196,6 +214,9 @@ const App: React.FC = () => {
           )}
           {currentView === 'admin' && user.role === 'admin' && (
             <AdminPanel currentUser={user} />
+          )}
+          {currentView === 'profile' && (
+             <UserProfile user={user} />
           )}
         </div>
       </main>

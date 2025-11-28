@@ -128,6 +128,34 @@ export const loginUser = async (username: string, password: string): Promise<{us
   }
 };
 
+export const updateUserProfile = async (
+  userId: string, 
+  data: { email?: string, whatsapp?: string, password?: string }
+): Promise<boolean> => {
+  try {
+    const updateData: any = {};
+    if (data.email) updateData.email = data.email;
+    if (data.whatsapp) updateData.whatsapp = data.whatsapp;
+    if (data.password && data.password.trim() !== "") updateData.password = data.password;
+
+    await updateDoc(doc(db, USERS_COLLECTION, userId), updateData);
+    
+    // Atualiza local storage se for o usuário atual
+    const currentUser = getCurrentUser();
+    if (currentUser && currentUser.id === userId) {
+      const updatedUser = { ...currentUser, ...updateData };
+      // Remove senha do objeto local por segurança (embora o tipo User não tenha senha explicitamente definida aqui, é bom garantir)
+      delete updatedUser.password; 
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+    }
+    
+    return true;
+  } catch (e) {
+    console.error("Erro ao atualizar perfil", e);
+    return false;
+  }
+};
+
 export const approveUser = async (userId: string): Promise<boolean> => {
   try {
     await updateDoc(doc(db, USERS_COLLECTION, userId), { approved: true });

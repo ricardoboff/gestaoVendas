@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { loginUser, registerUser } from '../services/storageService';
-import { Diamond, Loader2, MessageCircle, Mail } from 'lucide-react';
+import { Diamond, Loader2, MessageCircle, Mail, Eye, EyeOff } from 'lucide-react';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -10,6 +10,7 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [isPending, setIsPending] = useState(false); // Estado para mostrar tela de "Pendente"
+  const [showPassword, setShowPassword] = useState(false);
   
   // Form States
   const [name, setName] = useState('');
@@ -171,12 +172,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Senha</label>
-            <input
-              type="password"
-              className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-3 border placeholder-gray-500"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-3 border placeholder-gray-500 pr-10"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {error && <div className="text-red-400 text-sm text-center bg-red-900/20 p-2 rounded border border-red-900/50">{error}</div>}
@@ -204,7 +215,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 };
 
 const ShieldLockIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M12 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/><path d="M12 13v4"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M12 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4"/><path d="M12 13v4"/></svg>
 );
 
 export default Auth;
