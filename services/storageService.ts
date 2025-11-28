@@ -226,7 +226,9 @@ export const saveCustomer = async (customer: Customer): Promise<void> => {
   // Remove o ID do objeto de dados para não duplicar no Firestore
   const { id, ...dataToSave } = customer;
 
-  if (id && id.length > 20) { // IDs do Firestore são longos strings
+  // Verifica se existe um ID válido (não vazio)
+  if (id && id.trim() !== '') {
+    // Atualiza cliente existente
     await setDoc(doc(db, CUSTOMERS_COLLECTION, id), dataToSave);
   } else {
     // Novo cliente
