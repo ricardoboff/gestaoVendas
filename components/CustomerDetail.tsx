@@ -230,84 +230,6 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
   };
 
-  // Edit Transaction Modal
-  const EditTransactionModal = () => {
-    if (!editingTransaction) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-gray-900 rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-800 relative">
-          {loading && <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center rounded-xl z-10"><Loader2 className="animate-spin text-primary"/></div>}
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-white">Editar Lançamento</h3>
-            <button onClick={() => setEditingTransaction(null)} className="text-gray-400 hover:text-white">
-              <X size={20} />
-            </button>
-          </div>
-          <form onSubmit={handleSaveTransaction} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Data</label>
-              <input
-                type="date"
-                required
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
-                value={editingTransaction.date}
-                onChange={e => setEditingTransaction({...editingTransaction, date: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Descrição</label>
-              <input
-                type="text"
-                required
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
-                value={editingTransaction.description}
-                onChange={e => setEditingTransaction({...editingTransaction, description: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Valor</label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
-                value={editingTransaction.value}
-                onChange={e => setEditingTransaction({...editingTransaction, value: parseFloat(e.target.value)})}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Tipo</label>
-              <select
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
-                value={editingTransaction.type}
-                onChange={e => setEditingTransaction({...editingTransaction, type: e.target.value as TransactionType})}
-              >
-                <option value={TransactionType.SALE}>Venda (Débito)</option>
-                <option value={TransactionType.PAYMENT}>Pagamento (Crédito)</option>
-              </select>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setEditingTransaction(null)}
-                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex-1 px-4 py-2 bg-primary text-black font-semibold rounded-lg hover:bg-gray-200"
-              >
-                Salvar
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-
   if (isEditing) {
     return (
       <div className="space-y-6">
@@ -635,7 +557,78 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
       )}
 
       {/* Render Modal if Editing */}
-      <EditTransactionModal />
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-800 relative">
+            {loading && <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center rounded-xl z-10"><Loader2 className="animate-spin text-primary"/></div>}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-white">Editar Lançamento</h3>
+              <button onClick={() => setEditingTransaction(null)} className="text-gray-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveTransaction} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Data</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
+                  value={editingTransaction.date}
+                  onChange={e => setEditingTransaction({...editingTransaction, date: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Descrição</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
+                  value={editingTransaction.description}
+                  onChange={e => setEditingTransaction({...editingTransaction, description: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Valor</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
+                  value={editingTransaction.value}
+                  onChange={e => setEditingTransaction({...editingTransaction, value: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Tipo</label>
+                <select
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 border"
+                  value={editingTransaction.type}
+                  onChange={e => setEditingTransaction({...editingTransaction, type: e.target.value as TransactionType})}
+                >
+                  <option value={TransactionType.SALE}>Venda (Débito)</option>
+                  <option value={TransactionType.PAYMENT}>Pagamento (Crédito)</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-primary text-black font-semibold rounded-lg hover:bg-gray-200"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
