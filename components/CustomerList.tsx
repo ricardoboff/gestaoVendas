@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Customer } from '../types';
-import { Search, UserPlus, ChevronRight, Trash2, X, Loader2 } from 'lucide-react';
+import { Customer, TransactionType } from '../types';
+import { Search, UserPlus, ChevronRight, Trash2, X, Loader2, Flag } from 'lucide-react';
 import { saveCustomer, deleteCustomer } from '../services/storageService';
 
 interface CustomerListProps {
@@ -37,16 +37,16 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
 
   const maskCPF = (value: string) => {
     return value
-      .replace(/\D/g, '') // substitui qualquer caracter que nao seja numero por nada
-      .replace(/(\d{3})(\d)/, '$1.$2') // captura 2 grupos de numero o primeiro de 3 e o segundo de 1, apos capturar o primeiro grupo ele adiciona um ponto antes do segundo grupo de numero
+      .replace(/\D/g, '') 
+      .replace(/(\d{3})(\d)/, '$1.$2') 
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-      .replace(/(-\d{2})\d+?$/, '$1'); // captura 2 numeros seguidos de um traço e não deixa ser digitado mais nada
+      .replace(/(-\d{2})\d+?$/, '$1'); 
   };
 
   const validateCPF = (cpf: string) => {
     cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf === '') return true; // Aceita vazio pois pode ser opcional
+    if (cpf === '') return true; 
     if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
     
     let sum = 0;
@@ -76,7 +76,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
 
   const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewCustomer({ ...newCustomer, cpf: maskCPF(e.target.value) });
-    setCpfError(''); // Limpa erro ao digitar
+    setCpfError(''); 
   };
 
   const handleAddCustomer = async (e: React.FormEvent) => {
@@ -91,8 +91,6 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
     
     setLoading(true);
     const customer: Customer = {
-      // ID será gerado pelo Firebase se não enviado, mas aqui iniciamos
-      // o objeto sem ID e o service cuida disso
       id: '', 
       name: newCustomer.name,
       phonePrimary: newCustomer.phonePrimary,
@@ -126,6 +124,33 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  };
+
+  // Lógica para verificar atraso (> 60 dias)
+  const getOverdueInfo = (customer: Customer): { isOverdue: boolean, days: number } => {
+    if (customer.balance <= 0.10) return { isOverdue: false, days: 0 };
+    if (!customer.transactions || customer.transactions.length === 0) return { isOverdue: false, days: 0 };
+
+    const sortedTrans = [...customer.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const lastSale = sortedTrans.find(t => t.type === TransactionType.SALE);
+    if (!lastSale) return { isOverdue: false, days: 0 };
+
+    const lastPaymentAfterSale = sortedTrans.find(t => 
+      t.type === TransactionType.PAYMENT && 
+      new Date(t.date) > new Date(lastSale.date)
+    );
+
+    let referenceDate = new Date(lastSale.date);
+    if (lastPaymentAfterSale) {
+      referenceDate = new Date(lastPaymentAfterSale.date);
+    }
+
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - referenceDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return { isOverdue: diffDays > 60, days: diffDays };
   };
 
   return (
@@ -240,38 +265,49 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
 
       <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
         <ul className="divide-y divide-gray-800">
-          {filteredCustomers.map(customer => (
-            <li 
-              key={customer.id} 
-              onClick={() => onSelectCustomer(customer)}
-              className="p-4 hover:bg-gray-800 transition-colors cursor-pointer flex items-center justify-between"
-            >
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-100">{customer.name}</h3>
-                <p className="text-sm text-gray-500">{customer.phonePrimary}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase font-medium">Saldo</div>
-                  <div className={`font-bold ${customer.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {formatCurrency(customer.balance)}
+          {filteredCustomers.map(customer => {
+            const { isOverdue, days } = getOverdueInfo(customer);
+            
+            return (
+              <li 
+                key={customer.id} 
+                onClick={() => onSelectCustomer(customer)}
+                className="p-4 hover:bg-gray-800 transition-colors cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-100">{customer.name}</h3>
+                    {isOverdue && (
+                      <div title={`Pagamento atrasado há ${days} dias`}>
+                        <Flag size={16} className="text-red-500 fill-red-500 animate-pulse" />
+                      </div>
+                    )}
                   </div>
+                  <p className="text-sm text-gray-500">{customer.phonePrimary}</p>
                 </div>
-                
-                {(Math.abs(customer.balance) < 0.10 || customer.transactions.length === 0) && (
-                   <button 
-                    onClick={(e) => handleDelete(e, customer.id)}
-                    className="p-2 text-gray-600 hover:text-red-500 transition-colors"
-                    title="Excluir cliente"
-                   >
-                     <Trash2 size={18} />
-                   </button>
-                )}
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500 uppercase font-medium">Saldo</div>
+                    <div className={`font-bold ${customer.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      {formatCurrency(customer.balance)}
+                    </div>
+                  </div>
+                  
+                  {(Math.abs(customer.balance) < 0.10 || customer.transactions.length === 0) && (
+                     <button 
+                      onClick={(e) => handleDelete(e, customer.id)}
+                      className="p-2 text-gray-600 hover:text-red-500 transition-colors"
+                      title="Excluir cliente"
+                     >
+                       <Trash2 size={18} />
+                     </button>
+                  )}
 
-                <ChevronRight size={20} className="text-gray-600" />
-              </div>
-            </li>
-          ))}
+                  <ChevronRight size={20} className="text-gray-600" />
+                </div>
+              </li>
+            );
+          })}
           {filteredCustomers.length === 0 && (
             <li className="p-8 text-center text-gray-500">
               Nenhum cliente encontrado.
