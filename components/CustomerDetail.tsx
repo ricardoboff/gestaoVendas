@@ -267,7 +267,10 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
     // Converter para dias (arredondando para cima)
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    const message = `Olá *${customer.name}*\n\nJá fazem *${diffDays} dias* da sua ultima compra e verifiquei que ainda não houve pagamentos... seu débito é de *${formatCurrency(customer.balance)}* caso não seja possível cumprir nosso acordo entre em contato comigo para negociarmos.\nDesde já agradeço.`;
+    // Extrair apenas o primeiro nome
+    const firstName = customer.name.split(' ')[0];
+
+    const message = `Olá *${firstName}*\n\nJá fazem *${diffDays} dias* da sua ultima compra e verifiquei que ainda não houve pagamentos... seu débito é de *${formatCurrency(customer.balance)}*.\nCaso não seja possível cumprir nosso acordo sobre os pagamentos, por favor entre em contato comigo para negociarmos.\nDesde já agradeço.`;
 
     const cleanPhone = customer.phonePrimary.replace(/\D/g, '');
     const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
