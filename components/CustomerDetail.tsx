@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Customer, Transaction, TransactionType } from '../types';
-import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle } from 'lucide-react';
 import ScannerModal from './ScannerModal';
 import { createTransaction, saveCustomer, deleteCustomer, updateTransaction, deleteTransaction } from '../services/storageService';
 
@@ -230,6 +230,50 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
   };
 
+  // --- Lógica de Cobrança WhatsApp ---
+  const handleCollectionMessage = () => {
+    if (customer.balance <= 0) {
+      alert("Este cliente não possui débitos pendentes para cobrar.");
+      return;
+    }
+
+    // Ordenar transações por data (mais recente primeiro)
+    const sortedTrans = [...customer.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Encontrar última venda
+    const lastSale = sortedTrans.find(t => t.type === TransactionType.SALE);
+    
+    if (!lastSale) {
+      alert("Não há registro de vendas para calcular a data.");
+      return;
+    }
+
+    // Encontrar último pagamento (se houver) que seja mais recente que a última venda
+    const lastPaymentAfterSale = sortedTrans.find(t => 
+      t.type === TransactionType.PAYMENT && 
+      new Date(t.date) > new Date(lastSale.date)
+    );
+
+    let referenceDate = new Date(lastSale.date);
+    
+    // Regra: Se houver pagamento posterior à última venda, usamos a data do pagamento para calcular dias de inatividade
+    if (lastPaymentAfterSale) {
+      referenceDate = new Date(lastPaymentAfterSale.date);
+    }
+
+    const today = new Date();
+    // Diferença em milissegundos
+    const diffTime = Math.abs(today.getTime() - referenceDate.getTime());
+    // Converter para dias (arredondando para cima)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    const message = `Olá *${customer.name}*\n\nJá fazem *${diffDays} dias* da sua ultima compra e verifiquei que ainda não houve pagamentos... seu débito é de *${formatCurrency(customer.balance)}* caso não seja possível cumprir nosso acordo entre em contato comigo para negociarmos.\nDesde já agradeço.`;
+
+    const cleanPhone = customer.phonePrimary.replace(/\D/g, '');
+    const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   if (isEditing) {
     return (
       <div className="space-y-6">
@@ -386,10 +430,18 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
         <div className="flex flex-col sm:flex-row gap-3 border-t border-gray-800 pt-4 mt-2">
           <button 
             onClick={() => setShowScanner(true)}
-            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
           >
             <Camera size={18} />
             Digitalizar Caderno
+          </button>
+          
+          <button 
+            onClick={handleCollectionMessage}
+            className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium"
+          >
+            <MessageCircle size={18} />
+            Enviar Cobrança
           </button>
         </div>
       </div>
