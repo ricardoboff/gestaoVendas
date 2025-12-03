@@ -365,19 +365,21 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-gray-100">{customer.name}</h3>
-                    {isOverdue && (
-                      <div title={`Pagamento atrasado há ${days} dias`}>
-                        <Flag size={16} className="text-red-500 fill-red-500 animate-pulse" />
-                      </div>
-                    )}
                   </div>
                   <p className="text-sm text-gray-500">{customer.phonePrimary}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="text-xs text-gray-500 uppercase font-medium">Saldo</div>
-                    <div className={`font-bold ${customer.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                      {formatCurrency(customer.balance)}
+                    <div className="flex items-center justify-end gap-2">
+                      {isOverdue && (
+                        <div title={`Pagamento atrasado há ${days} dias`}>
+                          <Flag size={16} className="text-red-500 fill-red-500 animate-pulse" />
+                        </div>
+                      )}
+                      <div className={`font-bold ${customer.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                        {formatCurrency(customer.balance)}
+                      </div>
                     </div>
                   </div>
                   
