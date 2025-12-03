@@ -129,7 +129,6 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onClose, onScanComplete }) 
               <input 
                 type="file" 
                 accept="image/*" 
-                capture="environment"
                 className="hidden" 
                 ref={fileInputRef}
                 onChange={handleFileChange}
