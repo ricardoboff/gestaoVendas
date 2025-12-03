@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Customer, TransactionType } from '../types';
-import { Search, UserPlus, ChevronRight, Trash2, X, Loader2, Flag } from 'lucide-react';
+import { Search, UserPlus, ChevronRight, Trash2, X, Loader2, Flag, Mic, MicOff } from 'lucide-react';
 import { saveCustomer, deleteCustomer } from '../services/storageService';
 
 interface CustomerListProps {
@@ -8,6 +8,79 @@ interface CustomerListProps {
   onSelectCustomer: (customer: Customer) => void;
   onUpdate: () => void;
 }
+
+// Componente auxiliar para entrada de voz
+const VoiceInput: React.FC<{
+  onResult: (text: string) => void;
+  isMasked?: boolean;
+}> = ({ onResult, isMasked }) => {
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
+
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      rec.lang = 'pt-BR';
+      rec.continuous = false;
+      rec.interimResults = false;
+
+      rec.onresult = (event: any) => {
+        let transcript = event.results[0][0].transcript;
+        // Se for campo mascarado (números), tenta limpar um pouco o texto
+        if (isMasked) {
+           transcript = transcript.replace(/[^0-9]/g, '');
+        }
+        onResult(transcript);
+        setIsListening(false);
+      };
+
+      rec.onerror = (event: any) => {
+        console.error("Erro no reconhecimento de voz", event.error);
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(rec);
+    }
+  }, [onResult, isMasked]);
+
+  const toggleListening = (e: React.MouseEvent) => {
+    e.preventDefault(); // Evita submit do form
+    if (!recognition) {
+      alert("Seu navegador não suporta comando de voz.");
+      return;
+    }
+
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+    } else {
+      recognition.start();
+      setIsListening(true);
+    }
+  };
+
+  if (!recognition) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={toggleListening}
+      className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full transition-all ${
+        isListening 
+          ? 'text-red-500 bg-red-900/20 animate-pulse' 
+          : 'text-gray-500 hover:text-primary'
+      }`}
+      title="Preencher com voz"
+    >
+      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+    </button>
+  );
+};
 
 const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer, onUpdate }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -189,58 +262,73 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
           <form onSubmit={handleAddCustomer} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Nome Completo *</label>
-              <input
-                type="text"
-                required
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                value={newCustomer.name}
-                onChange={e => setNewCustomer({...newCustomer, name: e.target.value})}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                  value={newCustomer.name}
+                  onChange={e => setNewCustomer({...newCustomer, name: e.target.value})}
+                />
+                <VoiceInput onResult={(text) => setNewCustomer(prev => ({ ...prev, name: text }))} />
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Telefone Principal *</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="(00) 00000-0000"
-                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                  value={newCustomer.phonePrimary}
-                  onChange={handlePhoneChange}
-                  maxLength={15}
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    placeholder="(00) 00000-0000"
+                    className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                    value={newCustomer.phonePrimary}
+                    onChange={handlePhoneChange}
+                    maxLength={15}
+                  />
+                  <VoiceInput isMasked onResult={(text) => setNewCustomer(prev => ({ ...prev, phonePrimary: maskPhone(text) }))} />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">CPF</label>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00"
-                  className={`w-full bg-gray-800 border text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 ${cpfError ? 'border-red-500' : 'border-gray-700'}`}
-                  value={newCustomer.cpf}
-                  onChange={handleCPFChange}
-                  maxLength={14}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="000.000.000-00"
+                    className={`w-full bg-gray-800 border text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 ${cpfError ? 'border-red-500' : 'border-gray-700'}`}
+                    value={newCustomer.cpf}
+                    onChange={handleCPFChange}
+                    maxLength={14}
+                  />
+                  <VoiceInput isMasked onResult={(text) => setNewCustomer(prev => ({ ...prev, cpf: maskCPF(text) }))} />
+                </div>
                 {cpfError && <p className="text-red-500 text-xs mt-1">{cpfError}</p>}
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Endereço</label>
-              <input
-                type="text"
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                value={newCustomer.address}
-                onChange={e => setNewCustomer({...newCustomer, address: e.target.value})}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                  value={newCustomer.address}
+                  onChange={e => setNewCustomer({...newCustomer, address: e.target.value})}
+                />
+                <VoiceInput onResult={(text) => setNewCustomer(prev => ({ ...prev, address: text }))} />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Observações / Preferências</label>
-              <textarea
-                rows={3}
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                placeholder="Ex: Gosta de brincos dourados..."
-                value={newCustomer.notes}
-                onChange={e => setNewCustomer({...newCustomer, notes: e.target.value})}
-              />
+              <div className="relative">
+                <textarea
+                  rows={3}
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                  placeholder="Ex: Gosta de brincos dourados..."
+                  value={newCustomer.notes}
+                  onChange={e => setNewCustomer({...newCustomer, notes: e.target.value})}
+                />
+                <VoiceInput onResult={(text) => setNewCustomer(prev => ({ ...prev, notes: prev.notes ? prev.notes + ' ' + text : text }))} />
+              </div>
             </div>
             
             <div className="flex gap-3 pt-4">

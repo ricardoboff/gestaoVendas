@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Customer, Transaction, TransactionType } from '../types';
-import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle, Mic, MicOff } from 'lucide-react';
 import ScannerModal from './ScannerModal';
 import { createTransaction, saveCustomer, deleteCustomer, updateTransaction, deleteTransaction } from '../services/storageService';
 
@@ -9,6 +9,78 @@ interface CustomerDetailProps {
   onBack: () => void;
   onUpdate: () => void;
 }
+
+// Componente auxiliar para entrada de voz (Reutilizado localmente)
+const VoiceInput: React.FC<{
+  onResult: (text: string) => void;
+  isMasked?: boolean;
+}> = ({ onResult, isMasked }) => {
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
+
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      rec.lang = 'pt-BR';
+      rec.continuous = false;
+      rec.interimResults = false;
+
+      rec.onresult = (event: any) => {
+        let transcript = event.results[0][0].transcript;
+        if (isMasked) {
+           transcript = transcript.replace(/[^0-9]/g, '');
+        }
+        onResult(transcript);
+        setIsListening(false);
+      };
+
+      rec.onerror = (event: any) => {
+        console.error("Erro no reconhecimento de voz", event.error);
+        setIsListening(false);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(rec);
+    }
+  }, [onResult, isMasked]);
+
+  const toggleListening = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!recognition) {
+      alert("Seu navegador não suporta comando de voz.");
+      return;
+    }
+
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+    } else {
+      recognition.start();
+      setIsListening(true);
+    }
+  };
+
+  if (!recognition) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={toggleListening}
+      className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full transition-all ${
+        isListening 
+          ? 'text-red-500 bg-red-900/20 animate-pulse' 
+          : 'text-gray-500 hover:text-primary'
+      }`}
+      title="Preencher com voz"
+    >
+      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+    </button>
+  );
+};
 
 const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpdate }) => {
   const [showScanner, setShowScanner] = useState(false);
@@ -291,57 +363,72 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
           <form onSubmit={handleUpdateCustomer} className="space-y-4">
              <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Nome Completo *</label>
-              <input
-                type="text"
-                required
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                value={editForm.name}
-                onChange={e => setEditForm({...editForm, name: e.target.value})}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                  value={editForm.name}
+                  onChange={e => setEditForm({...editForm, name: e.target.value})}
+                />
+                <VoiceInput onResult={(text) => setEditForm(prev => ({ ...prev, name: text }))} />
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Telefone Principal *</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="(00) 00000-0000"
-                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                  value={editForm.phonePrimary}
-                  onChange={handlePhoneChange}
-                  maxLength={15}
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    placeholder="(00) 00000-0000"
+                    className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                    value={editForm.phonePrimary}
+                    onChange={handlePhoneChange}
+                    maxLength={15}
+                  />
+                  <VoiceInput isMasked onResult={(text) => setEditForm(prev => ({ ...prev, phonePrimary: maskPhone(text) }))} />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">CPF</label>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00"
-                  className={`w-full bg-gray-800 border text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 ${cpfError ? 'border-red-500' : 'border-gray-700'}`}
-                  value={editForm.cpf}
-                  onChange={handleCPFChange}
-                  maxLength={14}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="000.000.000-00"
+                    className={`w-full bg-gray-800 border text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 ${cpfError ? 'border-red-500' : 'border-gray-700'}`}
+                    value={editForm.cpf}
+                    onChange={handleCPFChange}
+                    maxLength={14}
+                  />
+                  <VoiceInput isMasked onResult={(text) => setEditForm(prev => ({ ...prev, cpf: maskCPF(text) }))} />
+                </div>
                 {cpfError && <p className="text-red-500 text-xs mt-1">{cpfError}</p>}
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Endereço</label>
-              <input
-                type="text"
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                value={editForm.address}
-                onChange={e => setEditForm({...editForm, address: e.target.value})}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                  value={editForm.address}
+                  onChange={e => setEditForm({...editForm, address: e.target.value})}
+                />
+                <VoiceInput onResult={(text) => setEditForm(prev => ({ ...prev, address: text }))} />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Observações / Preferências</label>
-              <textarea
-                rows={3}
-                className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 border"
-                value={editForm.notes}
-                onChange={e => setEditForm({...editForm, notes: e.target.value})}
-              />
+              <div className="relative">
+                <textarea
+                  rows={3}
+                  className="w-full bg-gray-800 border-gray-700 text-white rounded-lg shadow-sm focus:ring-primary focus:border-primary p-2.5 pr-10 border"
+                  value={editForm.notes}
+                  onChange={e => setEditForm({...editForm, notes: e.target.value})}
+                />
+                <VoiceInput onResult={(text) => setEditForm(prev => ({ ...prev, notes: prev.notes ? prev.notes + ' ' + text : text }))} />
+              </div>
             </div>
             
             <div className="flex gap-3 pt-4">
