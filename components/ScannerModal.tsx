@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, X, Loader2, KeyRound, ExternalLink, Save } from 'lucide-react';
+import { Camera, Upload, X, Loader2, KeyRound, ExternalLink, Save, Image as ImageIcon } from 'lucide-react';
 import { analyzeLedgerImage, setStoredApiKey } from '../services/geminiService';
 import { TransactionType } from '../types';
 
@@ -14,7 +14,9 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onClose, onScanComplete }) 
   const [needsApiKey, setNeedsApiKey] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Dois refs distintos: um para câmera, um para galeria
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleProcessImage = async (base64String: string) => {
     setIsProcessing(true);
@@ -55,6 +57,9 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onClose, onScanComplete }) 
       await handleProcessImage(base64String);
     };
     reader.readAsDataURL(file);
+    
+    // Limpa o input para permitir selecionar o mesmo arquivo novamente se falhar
+    event.target.value = '';
   };
 
   const handleSaveKey = () => {
@@ -62,8 +67,6 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onClose, onScanComplete }) 
     setStoredApiKey(tempApiKey.trim());
     setNeedsApiKey(false);
     setTempApiKey('');
-    // O usuário precisará selecionar a imagem novamente ou podemos guardar o blob,
-    // mas por segurança e simplicidade, pedimos para selecionar novamente a imagem.
     alert("Chave salva! Tente enviar a imagem novamente.");
   };
 
@@ -116,7 +119,7 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onClose, onScanComplete }) 
         ) : (
           <>
             <p className="text-gray-400 mb-6 text-sm">
-              Tire uma foto ou faça upload da página do caderno. A IA irá extrair as datas, descrições e valores automaticamente.
+              Escolha como deseja enviar a imagem da página do caderno:
             </p>
 
             {error && (
@@ -125,35 +128,59 @@ const ScannerModal: React.FC<ScannerModalProps> = ({ onClose, onScanComplete }) 
               </div>
             )}
 
-            <div className="flex flex-col gap-4">
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                ref={fileInputRef}
-                onChange={handleFileChange}
-              />
+            {isProcessing ? (
+               <div className="flex flex-col items-center justify-center py-8 text-white">
+                  <Loader2 className="animate-spin mb-3 text-primary" size={32} />
+                  <p className="text-sm font-medium">Lendo anotações...</p>
+                  <p className="text-xs text-gray-500 mt-1">Isso pode levar alguns segundos</p>
+               </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {/* Input Invisível para Câmera (com capture) */}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment"
+                  className="hidden" 
+                  ref={cameraInputRef}
+                  onChange={handleFileChange}
+                />
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessing}
-                className="flex items-center justify-center gap-3 w-full bg-primary text-black py-4 rounded-lg font-bold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="animate-spin" /> Processando Imagem...
-                  </>
-                ) : (
-                  <>
-                    <Camera size={24} />
-                    Tirar Foto / Carregar
-                  </>
-                )}
-              </button>
-            </div>
+                {/* Input Invisível para Galeria (sem capture) */}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  ref={galleryInputRef}
+                  onChange={handleFileChange}
+                />
+
+                <button
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 bg-gray-800 text-white p-6 rounded-xl hover:bg-gray-700 border border-gray-700 transition-all hover:scale-105"
+                >
+                  <div className="bg-primary/20 p-3 rounded-full text-primary mb-1">
+                    <Camera size={28} />
+                  </div>
+                  <span className="font-bold">Tirar Foto</span>
+                  <span className="text-xs text-gray-500">Câmera Traseira</span>
+                </button>
+
+                <button
+                  onClick={() => galleryInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 bg-gray-800 text-white p-6 rounded-xl hover:bg-gray-700 border border-gray-700 transition-all hover:scale-105"
+                >
+                  <div className="bg-blue-500/20 p-3 rounded-full text-blue-400 mb-1">
+                    <ImageIcon size={28} />
+                  </div>
+                  <span className="font-bold">Galeria</span>
+                  <span className="text-xs text-gray-500">Arquivos</span>
+                </button>
+              </div>
+            )}
             
-            <div className="mt-4 text-xs text-gray-500 text-center">
-              Dica: Certifique-se de que a caligrafia esteja legível e a foto bem iluminada.
+            <div className="mt-6 text-xs text-gray-500 text-center">
+              Dica: Para melhores resultados, garanta que a foto esteja focada e bem iluminada.
             </div>
           </>
         )}
