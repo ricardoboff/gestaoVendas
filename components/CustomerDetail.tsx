@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Transaction, TransactionType } from '../types';
-import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle, Mic, MicOff, Share2, Receipt } from 'lucide-react';
 import ScannerModal from './ScannerModal';
 import { createTransaction, saveCustomer, deleteCustomer, updateTransaction, deleteTransaction } from '../services/storageService';
 
@@ -309,10 +309,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
       return;
     }
 
-    // Ordenar transações por data (mais recente primeiro)
     const sortedTrans = [...customer.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    // Encontrar última venda
     const lastSale = sortedTrans.find(t => t.type === TransactionType.SALE);
     
     if (!lastSale) {
@@ -320,30 +317,62 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
       return;
     }
 
-    // Encontrar último pagamento (se houver) que seja mais recente que a última venda
     const lastPaymentAfterSale = sortedTrans.find(t => 
       t.type === TransactionType.PAYMENT && 
       new Date(t.date) > new Date(lastSale.date)
     );
 
     let referenceDate = new Date(lastSale.date);
-    
-    // Regra: Se houver pagamento posterior à última venda, usamos a data do pagamento para calcular dias de inatividade
     if (lastPaymentAfterSale) {
       referenceDate = new Date(lastPaymentAfterSale.date);
     }
 
     const today = new Date();
-    // Diferença em milissegundos
     const diffTime = Math.abs(today.getTime() - referenceDate.getTime());
-    // Converter para dias (arredondando para cima)
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // Extrair apenas o primeiro nome
     const firstName = customer.name.split(' ')[0];
 
     const message = `Olá *${firstName}*\n\nJá fazem *${diffDays} dias* da sua ultima compra e verifiquei que ainda não houve pagamentos... seu débito é de *${formatCurrency(customer.balance)}*.\nCaso não seja possível cumprir nosso acordo sobre os pagamentos, por favor entre em contato comigo para negociarmos.\nDesde já agradeço.`;
 
+    const cleanPhone = customer.phonePrimary.replace(/\D/g, '');
+    const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  // --- Lógica de Extrato WhatsApp ---
+  const handleShareStatement = () => {
+    const sortedTrans = [...customer.transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Pegar apenas os últimos 30 lançamentos para não estourar o limite de URL do WhatsApp
+    const limit = 30;
+    const recentTrans = sortedTrans.slice(-limit);
+    const hasMore = sortedTrans.length > limit;
+
+    let message = `💎 *Extrato - Ornare Semijoias* 💎\n`;
+    message += `Cliente: ${customer.name}\n`;
+    message += `Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
+    message += `------------------------------\n`;
+    
+    if (hasMore) {
+       message += `_(Exibindo últimos ${limit} lançamentos)_\n\n`;
+    }
+
+    recentTrans.forEach(t => {
+       const date = formatDate(t.date).substring(0, 5); // dd/mm
+       const value = formatCurrency(t.value).replace('R$', '').trim();
+       
+       if (t.type === TransactionType.SALE) {
+         message += `🔴 ${date} - ${t.description}\n   *Débito: R$ ${value}*\n`;
+       } else {
+         message += `🟢 ${date} - ${t.description}\n   *Crédito: R$ ${value}*\n`;
+       }
+       message += `\n`;
+    });
+
+    message += `------------------------------\n`;
+    message += `*Saldo Devedor: ${formatCurrency(customer.balance)}*`;
+    
     const cleanPhone = customer.phonePrimary.replace(/\D/g, '');
     const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
@@ -531,7 +560,16 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
             className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium"
           >
             <MessageCircle size={18} />
-            Enviar Cobrança
+            Cobrança
+          </button>
+
+          <button 
+            onClick={handleShareStatement}
+            className="flex items-center justify-center gap-2 bg-gray-700 text-white px-4 py-2.5 rounded-lg hover:bg-gray-600 transition-colors shadow-sm font-medium"
+            title="Enviar Extrato no WhatsApp"
+          >
+            <Receipt size={18} />
+            Enviar Extrato
           </button>
         </div>
       </div>
