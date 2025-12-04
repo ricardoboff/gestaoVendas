@@ -1,17 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TransactionType } from "../types";
 
-// Chave para armazenar no LocalStorage do navegador do usuário
-const GEMINI_API_KEY_STORAGE = 'ornare_gemini_api_key';
-
-export const getStoredApiKey = () => {
-  return localStorage.getItem(GEMINI_API_KEY_STORAGE) || process.env.API_KEY || '';
-};
-
-export const setStoredApiKey = (key: string) => {
-  localStorage.setItem(GEMINI_API_KEY_STORAGE, key);
-};
-
 interface ScannedItem {
   date: string;
   description: string;
@@ -21,14 +10,8 @@ interface ScannedItem {
 
 export const analyzeLedgerImage = async (base64Image: string): Promise<ScannedItem[]> => {
   try {
-    const apiKey = getStoredApiKey();
-    
-    if (!apiKey) {
-      throw new Error("API_KEY_MISSING");
-    }
-
-    // Inicializa a IA apenas no momento da chamada para garantir que pegou a chave mais recente
-    const ai = new GoogleGenAI({ apiKey });
+    // Inicializa a IA usando a chave de API do ambiente
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     // Remove cabeçalho data URL se presente
     const data = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
@@ -82,7 +65,8 @@ export const analyzeLedgerImage = async (base64Image: string): Promise<ScannedIt
               value: { type: Type.NUMBER, description: "Valor numérico (ex: 150.00)" },
               type: { type: Type.STRING, enum: ["sale", "payment"], description: "sale para venda/dívida, payment para pagamento recebido" }
             },
-            required: ["date", "description", "value", "type"]
+            required: ["date", "description", "value", "type"],
+            propertyOrdering: ["date", "description", "value", "type"]
           }
         }
       }
@@ -96,15 +80,6 @@ export const analyzeLedgerImage = async (base64Image: string): Promise<ScannedIt
 
   } catch (error: any) {
     console.error("Error analyzing image:", error);
-    
-    if (error.message === "API_KEY_MISSING") {
-      throw new Error("MISSING_KEY");
-    }
-
-    if (error.toString().includes("403") || error.toString().includes("API key not valid")) {
-      throw new Error("INVALID_KEY");
-    }
-
     throw new Error("Falha ao processar a imagem. Tente novamente com uma foto mais clara.");
   }
 };
