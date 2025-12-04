@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from '../types';
-import { getUsers, deleteUser, exportData, importData, approveUser, migrateDates2024to2025 } from '../services/storageService';
-import { Trash2, Shield, User as UserIcon, Download, Upload, Database, Loader2, CheckCircle, XCircle, AlertTriangle, Calendar } from 'lucide-react';
+import { getUsers, deleteUser, exportData, importData, approveUser } from '../services/storageService';
+import { Trash2, Shield, User as UserIcon, Download, Upload, Database, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 interface AdminPanelProps {
   currentUser: User;
@@ -95,15 +95,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
     reader.readAsText(file);
     
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleFixDates = async () => {
-    if (window.confirm("ATENÇÃO: Isso mudará TODAS as datas de 2024 para 2025 em todos os clientes.\n\nCertifique-se de ter feito BACKUP antes.\n\nDeseja continuar?")) {
-      setLoading(true);
-      const count = await migrateDates2024to2025();
-      setLoading(false);
-      alert(`Correção concluída! Clientes atualizados: ${count}`);
-    }
   };
 
   const pendingUsers = users.filter(u => !u.approved);
@@ -297,39 +288,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
                 Carregar Arquivo
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Maintenance Section */}
-      <div className="space-y-6 pt-6 border-t border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="bg-orange-600 p-2 rounded-lg text-white">
-            <AlertTriangle size={24} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">Manutenção do Sistema</h2>
-            <p className="text-gray-400 text-sm">Ferramentas de correção em massa</p>
-          </div>
-        </div>
-
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-          <div className="border border-orange-900/50 bg-orange-900/10 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-              <Calendar size={20} className="text-orange-500" />
-              Corrigir Ano das Datas (2024 {'->'} 2025)
-            </h3>
-            <p className="text-gray-400 text-sm mb-4">
-              Esta ferramenta percorre todos os clientes e atualiza os lançamentos feitos com data em <strong>2024</strong> para <strong>2025</strong>. 
-              Útil para corrigir erros de importação ou cadastro retroativo.
-            </p>
-            <button
-              onClick={handleFixDates}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            >
-              <Database size={18} />
-              Executar Correção
-            </button>
           </div>
         </div>
       </div>

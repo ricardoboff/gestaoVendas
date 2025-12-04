@@ -360,39 +360,3 @@ export const importData = async (jsonString: string): Promise<boolean> => {
     return false;
   }
 };
-
-// --- Migração / Manutenção ---
-
-export const migrateDates2024to2025 = async (): Promise<number> => {
-  try {
-    const customers = await getCustomers();
-    let updatedCount = 0;
-
-    for (const customer of customers) {
-      if (!customer.transactions || customer.transactions.length === 0) continue;
-
-      let hasChanges = false;
-      const updatedTransactions = customer.transactions.map(t => {
-        // Verifica se a data começa com 2024
-        if (t.date && t.date.startsWith('2024-')) {
-          hasChanges = true;
-          // Substitui 2024 por 2025
-          return { ...t, date: t.date.replace('2024-', '2025-') };
-        }
-        return t;
-      });
-
-      if (hasChanges) {
-        // Atualiza apenas o campo transactions no Firestore
-        await updateDoc(doc(db, CUSTOMERS_COLLECTION, customer.id), {
-          transactions: updatedTransactions
-        });
-        updatedCount++;
-      }
-    }
-    return updatedCount;
-  } catch (e) {
-    console.error("Erro na migração de datas", e);
-    return 0;
-  }
-};
