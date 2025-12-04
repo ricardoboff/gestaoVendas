@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, TransactionType } from '../types';
-import { Search, UserPlus, ChevronRight, Trash2, X, Loader2, Flag, Mic, MicOff } from 'lucide-react';
+import { Search, UserPlus, ChevronRight, Trash2, X, Loader2, Flag, Mic, MicOff, AlertTriangle } from 'lucide-react';
 import { saveCustomer, deleteCustomer } from '../services/storageService';
 
 interface CustomerListProps {
@@ -199,31 +199,56 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  // Lógica para verificar atraso (> 60 dias)
-  const getOverdueInfo = (customer: Customer): { isOverdue: boolean, days: number } => {
-    if (customer.balance <= 0.10) return { isOverdue: false, days: 0 };
-    if (!customer.transactions || customer.transactions.length === 0) return { isOverdue: false, days: 0 };
+  // Helper para calcular diferença de dias
+  const getDaysDiff = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - date.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Nova Lógica de Status (Bandeiras)
+  const getCustomerStatus = (customer: Customer) => {
+    if (!customer.transactions || customer.transactions.length === 0) {
+      return { isRed: false, daysRed: 0, isYellow: false, daysYellow: 0 };
+    }
 
     const sortedTrans = [...customer.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    const lastSale = sortedTrans.find(t => t.type === TransactionType.SALE);
-    if (!lastSale) return { isOverdue: false, days: 0 };
+    // --- Lógica Bandeira Vermelha (Inadimplência > 30 dias) ---
+    // Regra: Tem débito E não paga há mais de 30 dias
+    let isRed = false;
+    let daysRed = 0;
 
-    const lastPaymentAfterSale = sortedTrans.find(t => 
-      t.type === TransactionType.PAYMENT && 
-      new Date(t.date) > new Date(lastSale.date)
-    );
+    if (customer.balance > 0.10) {
+      const lastPayment = sortedTrans.find(t => t.type === TransactionType.PAYMENT);
+      const lastSale = sortedTrans.find(t => t.type === TransactionType.SALE);
 
-    let referenceDate = new Date(lastSale.date);
-    if (lastPaymentAfterSale) {
-      referenceDate = new Date(lastPaymentAfterSale.date);
+      // Se teve pagamento, conta dias do pagamento. Se nunca pagou, conta dias da venda (dívida antiga)
+      const refDate = lastPayment ? lastPayment.date : (lastSale ? lastSale.date : null);
+      
+      if (refDate) {
+        daysRed = getDaysDiff(refDate);
+        if (daysRed > 30) {
+          isRed = true;
+        }
+      }
     }
 
-    const today = new Date();
-    const diffTime = Math.abs(today.getTime() - referenceDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    // --- Lógica Bandeira Amarela (Inatividade > 60 dias) ---
+    // Regra: Sem compras há mais de 60 dias
+    let isYellow = false;
+    let daysYellow = 0;
+    
+    const lastSale = sortedTrans.find(t => t.type === TransactionType.SALE);
+    if (lastSale) {
+      daysYellow = getDaysDiff(lastSale.date);
+      if (daysYellow > 60) {
+        isYellow = true;
+      }
+    }
 
-    return { isOverdue: diffDays > 60, days: diffDays };
+    return { isRed, daysRed, isYellow, daysYellow };
   };
 
   return (
@@ -354,7 +379,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
       <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
         <ul className="divide-y divide-gray-800">
           {filteredCustomers.map(customer => {
-            const { isOverdue, days } = getOverdueInfo(customer);
+            const { isRed, daysRed, isYellow, daysYellow } = getCustomerStatus(customer);
             
             return (
               <li 
@@ -372,11 +397,21 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, onSelectCustomer
                   <div className="text-right">
                     <div className="text-xs text-gray-500 uppercase font-medium">Saldo</div>
                     <div className="flex items-center justify-end gap-2">
-                      {isOverdue && (
-                        <div title={`Pagamento atrasado há ${days} dias`}>
+                      
+                      {/* Flag Amarela: Inatividade de Compras > 60 dias */}
+                      {isYellow && (
+                        <div title={`Sem compras há ${daysYellow} dias`}>
+                          <AlertTriangle size={16} className="text-yellow-500 fill-yellow-500/20" />
+                        </div>
+                      )}
+
+                      {/* Flag Vermelha: Débito e Sem pagamento > 30 dias */}
+                      {isRed && (
+                        <div title={`Pagamento atrasado há ${daysRed} dias`}>
                           <Flag size={16} className="text-red-500 fill-red-500 animate-pulse" />
                         </div>
                       )}
+
                       <div className={`font-bold ${customer.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                         {formatCurrency(customer.balance)}
                       </div>
