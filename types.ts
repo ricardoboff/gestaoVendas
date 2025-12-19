@@ -1,3 +1,4 @@
+
 export enum TransactionType {
   SALE = 'SALE', // Venda (Débito do cliente)
   PAYMENT = 'PAYMENT' // Pagamento (Crédito do cliente)
@@ -24,14 +25,26 @@ export interface Customer {
   balance: number; // Positive means client owes money
 }
 
+export interface Expense {
+  id: string;
+  category: string;
+  description: string;
+  value: number;
+  dueDate: string;
+  paidDate?: string | null;
+  paidValue?: number | null;
+  status: 'PENDING' | 'PAID' | 'OVERDUE';
+  createdAt: number;
+}
+
 export interface User {
   id: string;
   name: string;
   username: string;
   role: 'admin' | 'user';
-  email?: string;      // Novo
-  whatsapp?: string;   // Novo
-  approved: boolean;   // Novo: true = acesso liberado, false = pendente
+  email?: string;
+  whatsapp?: string;
+  approved: boolean;
 }
 
 export interface AuthState {
