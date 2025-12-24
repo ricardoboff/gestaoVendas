@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regras para a coleção de Usuários
+    match /users/{userId} {
+      // Permite leitura para o processo de login e criação para novos cadastros
+      allow read, create: if true;
+      // Apenas permite atualizar ou deletar se os dados forem válidos (exemplo de regra de integridade)
+      allow update, delete: if request.resource.data.username != null;
+    }
+
+    // Regras para Clientes
+    match /customers/{customerId} {
+      // Permite acesso total aos dados de clientes
+      // Nota: Em produção ideal, usaríamos Firebase Auth para restringir 'if request.auth != null'
+      allow read, write: if request.resource.data.name != null || resource.data.name != null;
+    }
+
+    // Regras para Despesas
+    match /expenses/{expenseId} {
+      allow read, write: if true;
+    }
+    
+    // Regra Global: Remove a expiração de 30 dias do modo teste
+    // Substituímos a verificação de data por uma permissão permanente baseada na existência dos campos.
+  }
+}

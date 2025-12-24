@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from '../types';
 import { getUsers, deleteUser, exportData, importData, approveUser } from '../services/storageService';
-import { Trash2, Shield, User as UserIcon, Download, Upload, Database, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Trash2, Shield, User as UserIcon, Download, Upload, Database, Loader2, CheckCircle, AlertTriangle, Copy, ExternalLink } from 'lucide-react';
 
 interface AdminPanelProps {
   currentUser: User;
@@ -10,6 +10,7 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -23,135 +24,143 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
     setLoading(false);
   };
 
+  const firestoreRules = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, create: if true;
+      allow update, delete: if true;
+    }
+    match /customers/{customerId} {
+      allow read, write: if true;
+    }
+    match /expenses/{expenseId} {
+      allow read, write: if true;
+    }
+  }
+}`;
+
+  const handleCopyRules = () => {
+    navigator.clipboard.writeText(firestoreRules);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleDeleteUser = async (id: string, name: string) => {
     if (id === currentUser.id) {
       alert("Você não pode excluir seu próprio usuário.");
       return;
     }
-
-    if (window.confirm(`Tem certeza que deseja excluir o usuário "${name}"? Esta ação não pode ser desfeita.`)) {
+    if (window.confirm(`Tem certeza que deseja excluir o usuário "${name}"?`)) {
       setLoading(true);
-      const success = await deleteUser(id);
-      if (success) {
-        alert("Usuário excluído com sucesso.");
-        await loadUsers();
-      } else {
-        alert("Erro ao excluir usuário.");
-        setLoading(false);
-      }
+      await deleteUser(id);
+      await loadUsers();
     }
   };
 
   const handleApproveUser = async (id: string, name: string) => {
     if (window.confirm(`Deseja aprovar o acesso para "${name}"?`)) {
       setLoading(true);
-      const success = await approveUser(id);
-      if (success) {
-        alert("Usuário aprovado com sucesso!");
-        await loadUsers();
-      } else {
-        alert("Erro ao aprovar usuário.");
-        setLoading(false);
-      }
+      await approveUser(id);
+      await loadUsers();
     }
   };
 
   const handleDownloadBackup = async () => {
     setLoading(true);
     const dataStr = await exportData();
-    setLoading(false);
-    
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `ornare_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setLoading(false);
   };
 
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (event) => {
       const content = event.target?.result as string;
-      if (content) {
-        if (window.confirm("ATENÇÃO: Importar um backup irá ADICIONAR os clientes ao banco de dados. Deseja continuar?")) {
-          setLoading(true);
-          const success = await importData(content);
-          if (success) {
-            alert("Dados restaurados com sucesso! A página será recarregada.");
-            window.location.reload();
-          } else {
-            alert("Erro ao importar arquivo.");
-            setLoading(false);
-          }
-        }
+      if (window.confirm("Isso irá adicionar os dados do backup. Continuar?")) {
+        setLoading(true);
+        await importData(content);
+        alert("Dados restaurados! Recarregando...");
+        window.location.reload();
       }
     };
     reader.readAsText(file);
-    
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const pendingUsers = users.filter(u => !u.approved);
   const activeUsers = users.filter(u => u.approved);
 
   return (
-    <div className="space-y-8 relative">
+    <div className="space-y-8 relative pb-20">
        {loading && <div className="absolute inset-0 bg-gray-950/50 flex items-center justify-center z-50"><Loader2 className="animate-spin text-primary" size={32} /></div>}
 
-      {/* Pending Users Section */}
+      {/* Database Expiration Alert */}
+      <div className="bg-rose-900/20 border border-rose-900/50 p-6 rounded-xl flex flex-col md:flex-row gap-4 items-center">
+        <div className="bg-rose-500 p-3 rounded-full text-white shrink-0">
+          <AlertTriangle size={24} />
+        </div>
+        <div className="flex-1 text-center md:text-left">
+          <h2 className="text-lg font-bold text-white">Atenção: Regras do Banco de Dados</h2>
+          <p className="text-gray-400 text-sm">
+            O Firebase desativa o acesso ao banco após 30 dias em modo teste. Para evitar que o app pare de funcionar, você precisa atualizar as regras no Console do Firebase.
+          </p>
+        </div>
+        <button 
+          onClick={() => window.open('https://console.firebase.google.com/project/ornare-gestao/firestore/rules', '_blank')}
+          className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shrink-0"
+        >
+          <ExternalLink size={16} /> Abrir Firebase
+        </button>
+      </div>
+
+      {/* Rules Code Section */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 overflow-hidden">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <Shield size={18} className="text-primary" /> Novas Regras de Segurança
+          </h3>
+          <button 
+            onClick={handleCopyRules}
+            className="flex items-center gap-2 text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-700 transition-colors"
+          >
+            {copied ? <CheckCircle size={14} className="text-emerald-500" /> : <Copy size={14} />}
+            {copied ? 'Copiado!' : 'Copiar Regras'}
+          </button>
+        </div>
+        <pre className="bg-gray-950 p-4 rounded-lg text-[10px] sm:text-xs text-emerald-500 font-mono overflow-x-auto border border-gray-800 leading-relaxed">
+          {firestoreRules}
+        </pre>
+        <p className="text-[10px] text-gray-500 mt-3 italic">
+          * Copie o código acima e cole na aba "Rules" do seu Cloud Firestore no console.firebase.google.com
+        </p>
+      </div>
+
+      {/* Pending Users */}
       {pendingUsers.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-yellow-600 p-2 rounded-lg text-white">
-              <CheckCircle size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Solicitações Pendentes</h1>
-              <p className="text-gray-400 text-sm">Usuários aguardando aprovação</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-900 rounded-xl shadow-sm border border-yellow-800/50 overflow-hidden">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2 px-2">
+            <UserIcon size={20} className="text-yellow-500" /> Aprovações Pendentes
+          </h2>
+          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-gray-950">
-                  <tr>
-                    <th className="px-6 py-4 font-medium text-gray-400">Nome</th>
-                    <th className="px-6 py-4 font-medium text-gray-400">Usuário</th>
-                    <th className="px-6 py-4 font-medium text-gray-400">Contato</th>
-                    <th className="px-6 py-4 font-medium text-gray-400 text-right">Ações</th>
-                  </tr>
-                </thead>
                 <tbody className="divide-y divide-gray-800">
                   {pendingUsers.map(user => (
-                    <tr key={user.id} className="hover:bg-gray-800 transition-colors">
-                      <td className="px-6 py-4 text-white font-medium">{user.name}</td>
-                      <td className="px-6 py-4 text-gray-300">{user.username}</td>
-                      <td className="px-6 py-4 text-gray-400">
-                        <div className="flex flex-col text-xs gap-1">
-                          <span>{user.email || '-'}</span>
-                          <span>{user.whatsapp || '-'}</span>
-                        </div>
+                    <tr key={user.id} className="hover:bg-gray-800/50">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-white">{user.name}</div>
+                        <div className="text-xs text-gray-500">@{user.username}</div>
                       </td>
-                      <td className="px-6 py-4 text-right flex justify-end gap-2">
-                         <button
-                          onClick={() => handleApproveUser(user.id, user.name)}
-                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                        >
-                          Aprovar
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id, user.name)}
-                          className="bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          Rejeitar
-                        </button>
+                      <td className="px-6 py-4 text-right">
+                        <button onClick={() => handleApproveUser(user.id, user.name)} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold mr-2">Aprovar</button>
+                        <button onClick={() => handleDeleteUser(user.id, user.name)} className="text-gray-500 hover:text-rose-500 p-1.5"><Trash2 size={16}/></button>
                       </td>
                     </tr>
                   ))}
@@ -162,68 +171,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Active User Management Section */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-lg text-black">
-            <Shield size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Usuários Ativos</h1>
-            <p className="text-gray-400 text-sm">Gerencie o acesso ao sistema</p>
-          </div>
-        </div>
-
-        <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
+      {/* Active Users */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-white px-2">Usuários Ativos</h2>
+        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-950">
-                <tr>
-                  <th className="px-6 py-4 font-medium text-gray-400">Nome</th>
-                  <th className="px-6 py-4 font-medium text-gray-400">Usuário</th>
-                  <th className="px-6 py-4 font-medium text-gray-400">Contato</th>
-                  <th className="px-6 py-4 font-medium text-gray-400">Permissão</th>
-                  <th className="px-6 py-4 font-medium text-gray-400 text-right">Ações</th>
-                </tr>
-              </thead>
               <tbody className="divide-y divide-gray-800">
                 {activeUsers.map(user => (
-                  <tr key={user.id} className="hover:bg-gray-800 transition-colors">
-                    <td className="px-6 py-4 text-white font-medium flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
-                        <UserIcon size={16} />
+                  <tr key={user.id} className="hover:bg-gray-800/50">
+                    <td className="px-6 py-4 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
+                      <div>
+                        <div className="font-bold text-white">{user.name} {user.id === currentUser.id && <span className="text-[10px] bg-gray-800 px-1.5 py-0.5 rounded ml-1 text-gray-400">VOCÊ</span>}</div>
+                        <div className="text-xs text-gray-500">@{user.username} • {user.role}</div>
                       </div>
-                      {user.name}
-                    </td>
-                    <td className="px-6 py-4 text-gray-300">{user.username}</td>
-                    <td className="px-6 py-4 text-gray-400">
-                      <div className="flex flex-col text-xs gap-1">
-                        <span>{user.email || '-'}</span>
-                        <span>{user.whatsapp || '-'}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.role === 'admin' 
-                          ? 'bg-purple-900/30 text-purple-300 border border-purple-900/50' 
-                          : 'bg-gray-700/30 text-gray-300 border border-gray-700/50'
-                      }`}>
-                        {user.role === 'admin' ? 'Administrador' : 'Vendedor'}
-                      </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleDeleteUser(user.id, user.name)}
-                        disabled={user.id === currentUser.id}
-                        className={`p-2 rounded-lg transition-colors ${
-                          user.id === currentUser.id 
-                            ? 'text-gray-700 cursor-not-allowed' 
-                            : 'text-gray-400 hover:text-red-500 hover:bg-red-900/10'
-                        }`}
-                        title={user.id === currentUser.id ? "Você não pode se excluir" : "Excluir Usuário"}
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {user.id !== currentUser.id && (
+                        <button onClick={() => handleDeleteUser(user.id, user.name)} className="text-gray-600 hover:text-rose-500 p-2"><Trash2 size={18}/></button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -233,65 +200,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* Data Backup Section */}
-      <div className="space-y-6 pt-6 border-t border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-lg text-white">
-            <Database size={24} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white">Segurança de Dados</h2>
-            <p className="text-gray-400 text-sm">Backup e Restauração</p>
-          </div>
+      {/* Backup Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+          <h3 className="text-white font-bold mb-2 flex items-center gap-2"><Download size={18} className="text-emerald-500"/> Exportar Backup</h3>
+          <p className="text-xs text-gray-500 mb-4">Baixe todos os dados de clientes e vendas para segurança.</p>
+          <button onClick={handleDownloadBackup} className="w-full bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg text-sm font-bold border border-gray-700 transition-colors">Baixar JSON</button>
         </div>
-
-        <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <Download size={20} className="text-emerald-500" />
-                Fazer Backup
-              </h3>
-              <p className="text-gray-400 text-sm mb-4">
-                Baixe um arquivo contendo todos os clientes, vendas e usuários cadastrados. Guarde este arquivo em local seguro.
-              </p>
-              <button
-                onClick={handleDownloadBackup}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-              >
-                <Download size={18} />
-                Baixar Dados (JSON)
-              </button>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <Upload size={20} className="text-blue-500" />
-                Restaurar Backup
-              </h3>
-              <p className="text-gray-400 text-sm mb-4">
-                Recupere seus dados enviando um arquivo de backup anterior. 
-                <span className="text-red-400 block mt-1">Cuidado: Isso substituirá todos os dados atuais.</span>
-              </p>
-              <input
-                type="file"
-                accept=".json"
-                ref={fileInputRef}
-                onChange={handleImportBackup}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-              >
-                <Upload size={18} />
-                Carregar Arquivo
-              </button>
-            </div>
-          </div>
+        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+          <h3 className="text-white font-bold mb-2 flex items-center gap-2"><Upload size={18} className="text-blue-500"/> Importar Dados</h3>
+          <p className="text-xs text-gray-500 mb-4">Restaure dados a partir de um arquivo de backup anterior.</p>
+          <input type="file" accept=".json" ref={fileInputRef} onChange={handleImportBackup} className="hidden" />
+          <button onClick={() => fileInputRef.current?.click()} className="w-full bg-gray-800 hover:bg-gray-700 text-white py-2 rounded-lg text-sm font-bold border border-gray-700 transition-colors">Selecionar Arquivo</button>
         </div>
       </div>
-
     </div>
   );
 };
