@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
-import { Customer, TransactionType } from '../types';
-import { Users, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Customer, TransactionType, Expense } from '../types';
+import { Users, TrendingUp, TrendingDown, DollarSign, Receipt } from 'lucide-react';
 
 interface DashboardProps {
   customers: Customer[];
+  expenses: Expense[];
   onSelectCustomer: (customer: Customer) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ customers, onSelectCustomer }) => {
+const Dashboard: React.FC<DashboardProps> = ({ customers, expenses, onSelectCustomer }) => {
   const stats = useMemo(() => {
     let totalReceivables = 0;
     let totalSales = 0;
@@ -21,8 +22,10 @@ const Dashboard: React.FC<DashboardProps> = ({ customers, onSelectCustomer }) =>
       });
     });
 
-    return { totalReceivables, totalSales, totalPayments };
-  }, [customers]);
+    const totalExpenses = expenses.reduce((acc, e) => acc + e.value, 0);
+
+    return { totalReceivables, totalSales, totalPayments, totalExpenses };
+  }, [customers, expenses]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -32,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ customers, onSelectCustomer }) =>
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white">Painel Geral</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-800 flex flex-col">
           <div className="text-gray-400 text-sm font-medium mb-1 flex items-center gap-2">
             <Users size={16} /> Clientes Ativos
@@ -42,10 +45,10 @@ const Dashboard: React.FC<DashboardProps> = ({ customers, onSelectCustomer }) =>
 
         <div className="bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-800 flex flex-col">
           <div className="text-rose-400 text-sm font-medium mb-1 flex items-center gap-2">
-            <TrendingUp size={16} /> A Receber (Total)
+            <TrendingUp size={16} /> A Receber
           </div>
           <div className="text-2xl font-bold text-rose-500">{formatCurrency(stats.totalReceivables)}</div>
-          <div className="text-xs text-gray-500 mt-1">Saldo devedor acumulado</div>
+          <div className="text-xs text-gray-500 mt-1">Saldo devedor</div>
         </div>
 
         <div className="bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-800 flex flex-col">
@@ -62,6 +65,14 @@ const Dashboard: React.FC<DashboardProps> = ({ customers, onSelectCustomer }) =>
           </div>
           <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalPayments)}</div>
           <div className="text-xs text-gray-500 mt-1">Desde o início</div>
+        </div>
+
+        <div className="bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-800 flex flex-col">
+          <div className="text-orange-400 text-sm font-medium mb-1 flex items-center gap-2">
+            <Receipt size={16} /> Total Despesas
+          </div>
+          <div className="text-2xl font-bold text-white">{formatCurrency(stats.totalExpenses)}</div>
+          <div className="text-xs text-gray-500 mt-1">Custos totais</div>
         </div>
       </div>
 

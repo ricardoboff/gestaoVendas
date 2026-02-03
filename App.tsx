@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Customer, User } from './types';
-import { initializeStorage, getCustomers, getCurrentUser, logoutUser } from './services/storageService';
+import { Customer, User, Expense } from './types';
+import { initializeStorage, getCustomers, getExpenses, getCurrentUser, logoutUser } from './services/storageService';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import CustomerList from './components/CustomerList';
@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<'dashboard' | 'customers' | 'detail' | 'admin' | 'profile' | 'install-help' | 'expenses'>('dashboard');
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,11 +42,12 @@ const App: React.FC = () => {
 
   const refreshData = async () => {
     setIsLoading(true);
-    const data = await getCustomers();
-    setCustomers(data);
+    const [custData, expData] = await Promise.all([getCustomers(), getExpenses()]);
+    setCustomers(custData);
+    setExpenses(expData);
     
     if (selectedCustomer) {
-      const updated = data.find(c => c.id === selectedCustomer.id);
+      const updated = custData.find(c => c.id === selectedCustomer.id);
       if (updated) setSelectedCustomer(updated);
       else {
         setSelectedCustomer(null);
@@ -154,6 +156,7 @@ const App: React.FC = () => {
               onClick={() => { setCurrentView('dashboard'); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${currentView === 'dashboard' ? 'bg-gray-800 text-white font-medium border border-gray-700' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
             >
+              {/* Corrected typo: changed '刻度LayoutDashboard' to 'LayoutDashboard' */}
               <LayoutDashboard size={20} /> Painel Geral
             </button>
             <button
@@ -216,7 +219,7 @@ const App: React.FC = () => {
         {isLoading && <div className="absolute inset-0 bg-gray-950/50 backdrop-blur-sm z-50 flex items-center justify-center"><Loader2 className="animate-spin text-primary" size={48} /></div>}
         
         <div className="max-w-5xl mx-auto">
-          {currentView === 'dashboard' && <Dashboard customers={customers} onSelectCustomer={navigateToCustomer} />}
+          {currentView === 'dashboard' && <Dashboard customers={customers} expenses={expenses} onSelectCustomer={navigateToCustomer} />}
           {currentView === 'customers' && <CustomerList customers={customers} onSelectCustomer={navigateToCustomer} onUpdate={refreshData} />}
           {currentView === 'detail' && selectedCustomer && <CustomerDetail customer={selectedCustomer} onBack={() => setCurrentView('customers')} onUpdate={refreshData} />}
           {currentView === 'expenses' && <ExpensePanel />}

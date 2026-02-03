@@ -10,7 +10,6 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -22,28 +21,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
     const data = await getUsers();
     setUsers(data);
     setLoading(false);
-  };
-
-  const firestoreRules = `rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, create: if true;
-      allow update, delete: if true;
-    }
-    match /customers/{customerId} {
-      allow read, write: if true;
-    }
-    match /expenses/{expenseId} {
-      allow read, write: if true;
-    }
-  }
-}`;
-
-  const handleCopyRules = () => {
-    navigator.clipboard.writeText(firestoreRules);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDeleteUser = async (id: string, name: string) => {
@@ -100,47 +77,6 @@ service cloud.firestore {
   return (
     <div className="space-y-8 relative pb-20">
        {loading && <div className="absolute inset-0 bg-gray-950/50 flex items-center justify-center z-50"><Loader2 className="animate-spin text-primary" size={32} /></div>}
-
-      {/* Database Expiration Alert */}
-      <div className="bg-rose-900/20 border border-rose-900/50 p-6 rounded-xl flex flex-col md:flex-row gap-4 items-center">
-        <div className="bg-rose-500 p-3 rounded-full text-white shrink-0">
-          <AlertTriangle size={24} />
-        </div>
-        <div className="flex-1 text-center md:text-left">
-          <h2 className="text-lg font-bold text-white">Atenção: Regras do Banco de Dados</h2>
-          <p className="text-gray-400 text-sm">
-            O Firebase desativa o acesso ao banco após 30 dias em modo teste. Para evitar que o app pare de funcionar, você precisa atualizar as regras no Console do Firebase.
-          </p>
-        </div>
-        <button 
-          onClick={() => window.open('https://console.firebase.google.com/project/ornare-gestao/firestore/rules', '_blank')}
-          className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shrink-0"
-        >
-          <ExternalLink size={16} /> Abrir Firebase
-        </button>
-      </div>
-
-      {/* Rules Code Section */}
-      <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 overflow-hidden">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <Shield size={18} className="text-primary" /> Novas Regras de Segurança
-          </h3>
-          <button 
-            onClick={handleCopyRules}
-            className="flex items-center gap-2 text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-700 transition-colors"
-          >
-            {copied ? <CheckCircle size={14} className="text-emerald-500" /> : <Copy size={14} />}
-            {copied ? 'Copiado!' : 'Copiar Regras'}
-          </button>
-        </div>
-        <pre className="bg-gray-950 p-4 rounded-lg text-[10px] sm:text-xs text-emerald-500 font-mono overflow-x-auto border border-gray-800 leading-relaxed">
-          {firestoreRules}
-        </pre>
-        <p className="text-[10px] text-gray-500 mt-3 italic">
-          * Copie o código acima e cole na aba "Rules" do seu Cloud Firestore no console.firebase.google.com
-        </p>
-      </div>
 
       {/* Pending Users */}
       {pendingUsers.length > 0 && (

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { TransactionType } from "../types";
 
@@ -10,13 +11,14 @@ interface ScannedItem {
 
 export const analyzeLedgerImage = async (base64Image: string): Promise<ScannedItem[]> => {
   try {
-    // Inicializa a IA usando a chave de API do ambiente
+    // Initialize IA using correct named parameter for API key from environment
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Remove cabeçalho data URL se presente
+    // Remove data URL header if present
     const data = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
-    const model = "gemini-2.5-flash"; 
+    // Using recommended model for task type per guidelines
+    const model = 'gemini-3-flash-preview'; 
 
     const prompt = `
       Analise esta imagem de um caderno de controle de caixa/fiado.
@@ -72,6 +74,7 @@ export const analyzeLedgerImage = async (base64Image: string): Promise<ScannedIt
       }
     });
 
+    // Access the .text property directly (not as a method) as per guidelines
     const text = response.text;
     if (!text) return [];
 
