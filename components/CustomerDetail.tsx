@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Customer, Transaction, TransactionType } from '../types';
-import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle, Mic, MicOff, Share2, Receipt } from 'lucide-react';
+import { ArrowLeft, Plus, Save, Trash2, Camera, Phone, MapPin, FileText, ExternalLink, Pencil, X, Loader2, MessageCircle, Mic, MicOff, Share2, Receipt, RefreshCw, History, ChevronDown, ChevronUp } from 'lucide-react';
 import ScannerModal from './ScannerModal';
-import { createTransaction, saveCustomer, deleteCustomer, updateTransaction, deleteTransaction } from '../services/storageService';
+import { createTransaction, saveCustomer, deleteCustomer, updateTransaction, deleteTransaction, resetCustomerAccount } from '../services/storageService';
 
 interface CustomerDetailProps {
   customer: Customer;
@@ -98,6 +98,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
   });
 
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const getLocalDateString = () => {
     const d = new Date();
@@ -264,6 +265,28 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
         onUpdate();
       } else {
         alert("Erro ao excluir o lançamento.");
+      }
+    }
+  };
+
+  const handleResetAccount = async () => {
+    if (customer.transactions.length === 0) {
+      alert("Não há movimentações para zerar.");
+      return;
+    }
+
+    const msg = customer.balance === 0 
+        ? "Deseja fechar o ciclo atual e iniciar um novo fluxo? Todas as movimentações atuais serão arquivadas no histórico deste cliente."
+        : `Atenção: O cliente ainda possui um saldo de ${formatCurrency(customer.balance)}. Deseja fechar este ciclo mesmo com saldo pendente?`;
+
+    if (window.confirm(msg)) {
+      setLoading(true);
+      const success = await resetCustomerAccount(customer.id);
+      setLoading(false);
+      if (success) {
+        onUpdate();
+      } else {
+        alert("Erro ao fechar ciclo.");
       }
     }
   };
@@ -655,6 +678,18 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
 
       {/* Ledger Table */}
       <div className="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden">
+        <div className="p-4 bg-gray-950/50 border-b border-gray-800 flex justify-between items-center">
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Movimentações Atuais</h3>
+          {customer.transactions.length > 0 && (
+            <button
+              onClick={handleResetAccount}
+              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+              title="Zerar conta e iniciar novo fluxo"
+            >
+              <RefreshCw size={14} /> Fechar Ciclo / Zerar
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-950">
@@ -712,6 +747,66 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({ customer, onBack, onUpd
           </table>
         </div>
       </div>
+
+      {/* History Section */}
+      {customer.archivedCycles && customer.archivedCycles.length > 0 && (
+        <div className="mt-8">
+          <button 
+            type="button"
+            onClick={() => setShowHistory(!showHistory)}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
+          >
+            <History size={18} />
+            <span className="font-bold">Ver Histórico de Ciclos Fechados ({customer.archivedCycles.length})</span>
+            {showHistory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+
+          {showHistory && (
+            <div className="space-y-4">
+              {[...customer.archivedCycles].sort((a,b) => b.id.localeCompare(a.id)).map(cycle => (
+                <div key={cycle.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+                  <div className="p-4 bg-gray-950 flex justify-between items-center border-b border-gray-800">
+                    <div className="text-xs text-gray-400">
+                      Fechado em: <span className="text-white font-medium">{new Date(cycle.closedAt).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      Saldo Final: <span className={`font-bold ${cycle.finalBalance > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {formatCurrency(cycle.finalBalance)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-4 overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="text-gray-500 border-b border-gray-800">
+                          <th className="pb-2 px-2">Data</th>
+                          <th className="pb-2 px-2">Descrição</th>
+                          <th className="pb-2 px-2 text-right">Valor</th>
+                          <th className="pb-2 px-2 text-center">Tipo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {cycle.transactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(t => (
+                          <tr key={t.id}>
+                            <td className="py-2 px-2 text-gray-400">{formatDate(t.date)}</td>
+                            <td className="py-2 px-2 text-gray-300">{t.description}</td>
+                            <td className="py-2 px-2 text-gray-300 text-right">{formatCurrency(t.value)}</td>
+                            <td className="py-2 px-2 text-center">
+                              <span className={t.type === TransactionType.SALE ? 'text-rose-500' : 'text-emerald-500'}>
+                                {t.type === TransactionType.SALE ? 'V' : 'P'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete Zone */}
       <div className="flex justify-end pt-8 pb-4">

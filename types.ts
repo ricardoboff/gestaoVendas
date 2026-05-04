@@ -13,6 +13,13 @@ export interface Transaction {
   createdAt: number;
 }
 
+export interface ArchivedCycle {
+  id: string;
+  closedAt: string;
+  transactions: Transaction[];
+  finalBalance: number;
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -22,6 +29,7 @@ export interface Customer {
   address?: string;
   notes?: string;
   transactions: Transaction[];
+  archivedCycles?: ArchivedCycle[];
   balance: number; // Positive means client owes money
 }
 

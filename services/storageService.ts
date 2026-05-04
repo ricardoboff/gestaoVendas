@@ -108,7 +108,14 @@ export const getCustomers = async (): Promise<Customer[]> => {
   return snapshot.docs.map(doc => {
     const data = doc.data() as any;
     const transactions = data.transactions || [];
-    return { id: doc.id, ...data, transactions, balance: calculateBalance(transactions) };
+    const archivedCycles = data.archivedCycles || [];
+    return { 
+      id: doc.id, 
+      ...data, 
+      transactions, 
+      archivedCycles,
+      balance: calculateBalance(transactions) 
+    };
   });
 };
 
@@ -158,6 +165,33 @@ export const deleteTransaction = async (customerId: string, transactionId: strin
   if (customerSnap.exists()) {
     const transactions = (customerSnap.data().transactions || []).filter((t: any) => t.id !== transactionId);
     await updateDoc(customerRef, { transactions });
+    return true;
+  }
+  return false;
+};
+
+export const resetCustomerAccount = async (customerId: string) => {
+  const customerRef = doc(db, CUSTOMERS_COLLECTION, customerId);
+  const customerSnap = await getDoc(customerRef);
+  
+  if (customerSnap.exists()) {
+    const data = customerSnap.data();
+    const currentTransactions = data.transactions || [];
+    const archivedCycles = data.archivedCycles || [];
+    
+    if (currentTransactions.length === 0) return true;
+
+    const newCycle = {
+      id: Date.now().toString(),
+      closedAt: new Date().toISOString(),
+      transactions: [...currentTransactions],
+      finalBalance: calculateBalance(currentTransactions)
+    };
+
+    await updateDoc(customerRef, {
+      transactions: [],
+      archivedCycles: [...archivedCycles, newCycle]
+    });
     return true;
   }
   return false;
